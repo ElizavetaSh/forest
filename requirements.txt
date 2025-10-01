@@ -1,0 +1,10 @@
+clip==0.2.0
+matplotlib==3.10.6
+numpy==1.24.3
+onnxruntime==1.23.0
+openai_clip==1.0.1
+opencv_python==4.8.1.78
+Pillow==11.3.0
+torch==2.8.0
+torchvision==0.23.0
+numpy==1.23.0
