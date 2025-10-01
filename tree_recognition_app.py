@@ -170,45 +170,40 @@ class TreeRecognitionApp:
             
             # Обработка нейронной сетью
             with torch.no_grad():
-                # output = self.model(image_tensor)
                 input_name = session.get_inputs()[0].name
     
                 # Выполняем инференс
                 output = session.run(None, {input_name: image_tensor.cpu().numpy()})
-                # if isinstance(output, dict):
-                #     output = output['out']
                 output = output[0]
-                print(type(output), output.shape)
                 prediction = np.argmax(output, axis=1)
-                sp_tok = clip.tokenize(species).to(self.device)
-                opt_tok = clip.tokenize(options_dict).to(self.device)
-                print("Befor clip ", image_tensor.shape)
-                pred_species = run_clip(self.clip_model, self.pressor, self.original_image, sp_tok, species, species_dict)
-                pred_options = run_clip(self.clip_model, self.pressor, self.original_image, opt_tok, options, options_dict)
-            # Создаем цветную маску
-            print(prediction, prediction.shape )
-            print('original_size ' , original_size)
-            resize_pred = cv2.resize(prediction[0].astype(np.uint8), 
-                                      original_size,  # (width, height)
-                                      interpolation=cv2.INTER_NEAREST)
-            print("After clip ", prediction.shape)
-            print("After clip ", original_size)
-            self.mask = self.create_colored_mask(resize_pred)
- 
-            # Создаем результат с наложением маски
-            result_image = self.overlay_mask_on_image(self.original_image, self.mask)
-            self.processed_image = result_image
-            # print("self.processed_image ", self.processed_image.shape)
-            
-            self.display_image(result_image, self.processed_canvas)
-            # print("After clip ", original_size)
-            # Обновляем информацию
-            self.update_detection_info(prediction, pred_species, pred_options)
-            self.save_btn.config(state=tk.NORMAL)
-            
+                if np.max(prediction[0])>0:
+                    sp_tok = clip.tokenize(species).to(self.device)
+                    opt_tok = clip.tokenize(options_dict).to(self.device)
+
+                    pred_species = run_clip(self.clip_model, self.pressor, self.original_image, sp_tok, species, species_dict)
+                    pred_options = run_clip(self.clip_model, self.pressor, self.original_image, opt_tok, options, options_dict)
+                    # Создаем цветную маску
+
+                    resize_pred = cv2.resize(prediction[0].astype(np.uint8), 
+                                            original_size,  # (width, height)
+                                            interpolation=cv2.INTER_NEAREST)
+                    self.mask = self.create_colored_mask(resize_pred)
+        
+                    # Создаем результат с наложением маски
+                    result_image = self.overlay_mask_on_image(self.original_image, self.mask)
+                    self.processed_image = result_image
+
+                    self.display_image(result_image, self.processed_canvas)
+
+                    # Обновляем информацию
+                    self.update_detection_info(prediction, pred_species, pred_options)
+                    self.save_btn.config(state=tk.NORMAL)
+                else:
+
+                    self.update_detection_info(None, None, None)
+                    self.save_btn.config(state=tk.NORMAL)
         except Exception as e:
             messagebox.showerror("Ошибка", f"Ошибка при обработке: {str(e)}")
-            print(e)
         finally:
             self.progress.stop()
     
@@ -236,12 +231,7 @@ class TreeRecognitionApp:
         
         # Конвертируем в numpy arrays
         original_np = np.array(original_image)
-        mask_np = np.array(mask)
-        print(np.max(mask_np))
-        # mask_np = np.stack([mask_np] * 3, axis=-1)
-        print("original_np ",original_np.shape)
-        print("mask_np ", mask_np.shape)
-         
+        mask_np = np.array(mask)         
         # Смешиваем изображения
         alpha = 0.6  # Прозрачность маски
         blended = cv2.addWeighted(original_np, 1 - alpha, mask_np, alpha, 0)
@@ -254,22 +244,24 @@ class TreeRecognitionApp:
         self.info_text.insert(tk.END, f"{message}\n")
     
     def update_detection_info(self, prediction, pred_spesies, pred_options):
+
         """Обновление информации о распознавании"""
-        unique_classes, counts = np.unique(prediction, return_counts=True)
-        total_pixels = prediction.size
-        
-        info_text = "Результаты распознавания:\n\n"
-        info_text += f"{pred_spesies}\n"
-        if isinstance(pred_options, list):
-            for i in pred_options:
-                info_text += f"Присудствуют такие болезни {i} \n"
+        if pred_spesies:
+           
+            info_text = "Результаты распознавания:\n\n"
+            info_text += f"{pred_spesies}\n"
+            if isinstance(pred_options, list):
+                for i in pred_options:
+                    info_text += f"Присудствуют такие болезни {i} \n"
+            else:
+                info_text += f"Присудствуют такие болезни {pred_options}\n"
+            
+            # info_text += f"\nВсего обработано пикселей: {total_pixels}"
+            # info_text += f"\nОбнаружено классов: {len(unique_classes)}"
         else:
-            info_text += f"Присудствуют такие болезни {pred_options}\n"
-        
-        # info_text += f"\nВсего обработано пикселей: {total_pixels}"
-        # info_text += f"\nОбнаружено классов: {len(unique_classes)}"
-        
+            info_text = "Ничего не найдено"
         self.update_info(info_text)
+        
     
     def save_result(self):
         """Сохранение результата"""
