@@ -1,3 +1,4 @@
+import os
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from PIL import Image, ImageTk
@@ -9,15 +10,24 @@ import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import json
-import time
 import onnxruntime as ort
 import clip
-# import streamlit as st
-# import paddle
-# from paddleseg.models import BiSeNetV2, UNet, DeepLabV3P
-# from paddleseg.transforms import Compose, Normalize, Resize
-# from paddleseg.cvlibs import Config
+
+
+import sys
+
+if getattr(sys, 'frozen', False):
+    class DummyFile:
+        def write(self, x): pass
+        def flush(self): pass
+    sys.stdout = DummyFile()
+    sys.stderr = DummyFile()
+    # base_path = sys._MEIPASS
+# else:
+#     base_path = os.path.abspath(".")
+base_path = os.path.abspath(".")
+CLIP_PATH = os.path.join(base_path, "ViT-L/14@336px.pt")
+SEG_PATH = os.path.join(base_path, "segformer_b0_cityscapes_1024x512_160k_model.onnx")
 
 # from appp.inferene_seg import BinaryTreeSegmentator, create_binary_deeplabv3_mobilenet
 from clip_inference import run_clip, species_dict,species, options, options_dict
@@ -45,7 +55,7 @@ class TreeRecognitionApp:
         """Загрузка или создание модели"""
         # model_path = "binary_deeplabv3_mobilenet_best.pth"
         # model = create_binary_deeplabv3_mobilenet()  # или create_binary_unet()
-        model_clip, preprocess = clip.load("ViT-L/14@336px", device=self.device)
+        model_clip, preprocess = clip.load("ViT-L/14@336px", device=self.device, download_root=base_path)
        
         # Загружаем веса
         # checkpoint = torch.load(model_path, map_location=self.device)
@@ -166,7 +176,7 @@ class TreeRecognitionApp:
             ])
             
             image_tensor = transform(self.original_image).unsqueeze(0).to(self.device)
-            session = ort.InferenceSession("segformer_b0_cityscapes_1024x512_160k_model.onnx")
+            session = ort.InferenceSession(SEG_PATH)
             
             # Обработка нейронной сетью
             with torch.no_grad():
@@ -251,10 +261,11 @@ class TreeRecognitionApp:
             info_text = "Результаты распознавания:\n\n"
             info_text += f"{pred_spesies}\n"
             if isinstance(pred_options, list):
+                info_text = "Присутствуют такие болезни как:\n"
                 for i in pred_options:
-                    info_text += f"Присудствуют такие болезни {i} \n"
+                    info_text += f"{i}\n"
             else:
-                info_text += f"Присудствуют такие болезни {pred_options}\n"
+                info_text += f"Присутствуют такие болезни как: {pred_options}\n"
             
             # info_text += f"\nВсего обработано пикселей: {total_pixels}"
             # info_text += f"\nОбнаружено классов: {len(unique_classes)}"
