@@ -71,27 +71,3 @@ def run_clip(model, preprocess, image, text, classes_lst, classes_dict):
         print("top_indices ", top_indices)
         res = [classes_dict[classes_lst[i]] for i in top_indices]
         return classes_dict[classes_lst[np.argmax(probs)]] if len(classes_lst)>12 else res
-
-
-
-# if __name__ == "__main__":
-#     parser = argparse.ArgumentParser()
-#     parser.add_argument("--mode", "-m", required=True)
-#     parser.add_argument("--path2image", "-p", required=True)
-#     args = parser.parse_args()
-#     mode = args.mode
-#     path2image = args.path2image
-#     device = "cuda" if torch.cuda.is_available() else "cpu"
-#     if mode == "species":
-#         classes_lst = species
-#         text = clip.tokenize(species).to(device)
-#         classes_dict = species_dict
-#     else:
-#         classes_lst = options
-#         text = clip.tokenize(options).to(device)
-#         classes_dict = options_dict
-#     device = "cuda" if torch.cuda.is_available() else "cpu"
-#     model, preprocess = clip.load("ViT-L/14@336px", device=device)
-#     pred_class = run_clip(model, preprocess, path2image, text, classes_lst, classes_dict)
-#     print(pred_class)
-
